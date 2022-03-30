@@ -9,7 +9,8 @@
 #define NBINITIAL 60
 
 #define PERIODEREFRESH 100
-
-#define TICKTRANSMATRICE 10
+#define PERIODEMOTEUR 50
+#define ENABLE_AUTOROTATE true
+#define TICKTRANSMATRICE 600
 
 #define NOMBLE "SablierNumerique"

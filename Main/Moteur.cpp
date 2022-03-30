@@ -13,6 +13,24 @@ void stepperInit()
  // digitalWrite(PIN_MOT_STP,LOW);
   digitalWrite(PIN_MOT_DIR,LOW);
  }
+
+
+FinDeCourseSablier_e FdCMoteur(uint32_t gravityDeg)
+{
+  uint32_t delta = 10;
+
+  if( (gravityDeg > 800) && (gravityDeg < 1000)   )
+   return UPA ;
+   
+  if( (gravityDeg > 2600) && (gravityDeg < 2800)   )
+   return UPB ;
+
+   return undefined;
+  
+  
+  
+  }
+ 
 /*
 
 void stepperEnable()

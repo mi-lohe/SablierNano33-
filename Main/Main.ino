@@ -35,7 +35,9 @@ state_sablier,
 state_sablier2,
 state_heure,
 state_temperature,
+state_moteur,
 state_test,
+state_idling,
 state_test2
  }machineState_e;
 
@@ -65,8 +67,22 @@ unsigned int compteur_test = 0;
 uint8_t HourGrainIDList[24] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 unsigned long Compteur_millis_A = 0;
+unsigned long Compteur_millis_B = 0;
 
 bool sens = false;
+
+
+typedef enum
+{
+motor_OFF = 0,
+motor_AUP,
+motor_BUP
+ }positionSablier_e;
+
+//positionSablier_e consigneMoteur
+positionSablier_e memorientationCible = motor_OFF;
+positionSablier_e orientationCible = motor_OFF;
+FinDeCourseSablier_e FDCSablier;
 
 BLEService ledService(LEDSERVICE_UUID); // BLE LED Service
 BLEByteCharacteristic switchCharacteristic(SWITCHCHARACTERISTIC_UUID, BLERead | BLEWrite);
@@ -191,7 +207,7 @@ void loop()
     //              Routine Sablier               //
     //--------------------------------------------//
     case state_sablier : 
-      delay(PERIODEREFRESH);
+      
       AngleGrav = (2700+getGravityAngle()+450)%3600;
       
       
@@ -228,7 +244,7 @@ void loop()
       }
       else if(howMuchHourGrain(HourGrainIDList) > hour(temps)%12)
       {
-        clrRandHourGrain(Grain_t MA[10][10],Grain_t MB[10][10],uint8_t CheckList[24])
+        clrRandHourGrain(MatriceA,MatriceB,HourGrainIDList);
       }
       
       //Serial.println(howMuchHourGrain(HourGrainIDList));
@@ -243,7 +259,7 @@ void loop()
     //              Routine Sablier 2             //
     //--------------------------------------------//
     case state_sablier2 : 
-      delay(PERIODEREFRESH);
+      
       AngleGrav = (1800+getGravityAngle())%3600;
       
       
@@ -308,9 +324,54 @@ void loop()
       break;
   
     //--------------------------------------------//
-    //              Routine Test                  //
+    //              Routine MOTEUR                //
     //--------------------------------------------//
-     case state_test: 
+     case state_moteur: 
+
+      AngleGrav = (1800+getGravityAngle())%3600;
+      Serial.println(AngleGrav);
+
+      FDCSablier = FdCMoteur(AngleGrav);
+
+      if((FDCSablier == UPA) && (orientationCible == motor_AUP) )
+          orientationCible = motor_OFF;
+
+      if((FDCSablier == UPB) && (orientationCible == motor_BUP) )
+          orientationCible = motor_OFF;
+      
+      if(( howManyGrain(MatriceA) <= 0 )) // Condition de mise en route
+         orientationCible = motor_BUP;
+
+      if(( howManyGrain(MatriceB) <= 0 )) // Condition de mise en route 
+         orientationCible = motor_AUP;
+
+      if((orientationCible != memorientationCible)|| true)//wip
+      {
+        switch(orientationCible)
+        {  
+         case motor_AUP:
+          pwm_1.write(0.5);
+          pwm_1.period_us(3000);
+          digitalWrite(PIN_MOT_EN,LOW);
+         break;
+         case motor_BUP:
+          pwm_1.write(0.5);
+          pwm_1.period_us(3000);
+          digitalWrite(PIN_MOT_EN,LOW);
+         break;
+         case motor_OFF:
+         
+          digitalWrite(PIN_MOT_EN,HIGH);
+         break;
+        }
+      memorientationCible = orientationCible;
+      }
+      
+      
+
+      
+    
+      /*  
       digitalWrite(PIN_MOT_EN,LOW);
       digitalWrite(PIN_MOT_DIR,sens);
       //analogWrite(PIN_MOT_STP,125);
@@ -344,32 +405,65 @@ void loop()
       delay(2000);
       digitalWrite(PIN_MOT_EN,HIGH);
       sens = !sens;
+    */
+      
       break;
+    
+      
     //--------------------------------------------//
     //              Routine Test                  //
     //--------------------------------------------//
      case state_test2: 
-     delay(100);
+     
 
       
-      break;
+     break;
+     case state_idling:
+      //delay(100);
+     
+
+     break;
       
   }
 // Fin des routines
 
 //gestion des transitions
   
-   if((decompteur_rempl <=0) && (machineState == state_remplissage) )
+   if((decompteur_rempl <=0) && (machineState == state_remplissage) )  /// TRANSITION POST_INIT
+  {
+    machineState = state_idling;    
+  }
+
+  if(machineState == state_sablier) // Transion de fin de mode sablier
+  {
+    machineState = state_idling ; 
+    Compteur_millis_A = millis();
+  }
+  if(((millis()-Compteur_millis_A) > PERIODEREFRESH )   && (machineState == state_idling )  ) // Transition de mise en mode sablier
   {
     
     machineState = state_sablier; 
-    
   }
+
   
-   if(machineState == state_test)
+  if(machineState == state_moteur) // Transion de fin de mode sablier
   {
-    //machineState = state_heure ; 
+    machineState = state_idling ; 
+    Compteur_millis_B = millis();
   }
+
+  if(((millis()-Compteur_millis_B) > PERIODEMOTEUR )   && (machineState == state_idling ) && ENABLE_AUTOROTATE ) // Transition de mise en mode moteur
+  {
+    
+    machineState = state_moteur; 
+  }
+
+  
+  
+   
+
+
+//FIN DES TRANSITION 
   
 }
 #ifdef MULTILOOP
